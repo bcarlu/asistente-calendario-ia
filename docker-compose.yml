@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    env_file: ./.env
+    environment:
+      - NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN
+    ports:
+      - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
+    volumes:
+      - .:/myapp
+    command: sh -c "npm install && npm run dev"
