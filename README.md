@@ -60,11 +60,16 @@ Eres una asesora de atencion al cliente (mujer) en un salon de belleza encargada
 
 3. **Configura las variables de entorno**:
 
-   Crea un archivo `.env` en la raíz del proyecto con las variables de entorno, ejemplo:
+  Crea un archivo `.env` en la raíz del proyecto con las variables de entorno, ejemplo:
 
-   ```plaintext
-   OPENAI_API_KEY=tu_clave_api_openai
-   ID_ASSISTANT=tu_id_asistente_openai
+  ```plaintext
+  OPENAI_API_KEY=tu_clave_api_openai
+  ID_ASSISTANT=tu_id_asistente_openai
+
+  GOOGLE_CAL_CLIENT_ID=tu_id_google_calendar
+  GOOGLE_CAL_CLIENT_SECRET=tu_client_secret_google_calendar
+  GOOGLE_CAL_REDIRECT_URI=http://localhost:3000/auth
+  ID_CALENDARIO=id_calendario
    ```
 
 4. **Levantar los servicios usando Docker Compose:**:
@@ -82,7 +87,12 @@ El servidor estará disponible en `http://localhost:3000`.
 
 ## Endpoints
 
-### 1. Asistente de IA
+### 1. Autenticacion en Google Calendar
+- **GET `/conectar-calendario`**: Se debe acceder desde el navegador web (no desde el cliente api como postman o rapidapi) para ser redirigido a la pagina de autenticacion de Google
+
+- **GET `/auth`**: Se utiliza para recibir y guardar el token de Google Calendar en un archivo local (token.json)
+
+### 2. Asistente de IA
 
 - **POST `/consultar-agenda`**: Recibe la pregunta del usuario y lo envía un mensaje al asistente de IA, el cual dependiendo de la pregunta llama a la funcion "consultarAgenda" y segun el resultado envia la respuesta al usuario. El cuerpo de la solicitud debe ser un JSON con el campo `mensaje`.
 
