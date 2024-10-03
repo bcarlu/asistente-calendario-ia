@@ -1,7 +1,14 @@
 import OpenAI from "openai";
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import fs from 'fs';
+import sqlite3 from 'sqlite3';
+// Para manipular rutas de los directorios
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Definir filename y dirname para utilizar con path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Para Open AI
 const openai = new OpenAI({
@@ -15,7 +22,7 @@ const idAsistente = process.env.ID_ASSISTANT;
 const TOKEN_PATH = 'token.json';
 
 // Funcion principal para generar respuestas IA basado en la pregunta de un usuario
-export const generarRespuestaIA = async (mensajeUsuario) => {
+export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario) => {
   console.log("Mensaje del usuario:", mensajeUsuario);
 
   try {
@@ -50,7 +57,7 @@ export const generarRespuestaIA = async (mensajeUsuario) => {
               console.log("La fecha del cliente es:", fecha)
 
               //const resultado = await consultarAgenda();
-              const resultado = await obtenerHorasDisponibles(fecha, duracion);                
+              const resultado = await obtenerHorasDisponibles(fecha, duracion, idUsuario, idCalendario);                
               console.log("Resultado consulta dentro de run:", resultado);
               return {
                 tool_call_id: tool.id,
@@ -92,10 +99,10 @@ export const generarRespuestaIA = async (mensajeUsuario) => {
 };
 
 // Funcion para obtener la disponibilidad segun la fecha y duracion del evento.
-export async function obtenerHorasDisponibles(fecha, duracionEvento) {
-  const auth = await autenticar()
+export async function obtenerHorasDisponibles(fecha, duracionEvento, idUsuario, Calendario) {
+  const auth = await autenticar(idUsuario)
   const calendar = google.calendar({ version: 'v3', auth });
-  const idCalendario = process.env.ID_CALENDARIO;
+  const idCalendario = Calendario || process.env.ID_CALENDARIO;
   const duracion = parseInt(duracionEvento)
   // Definir los horarios permitidos
   const horarioInicio = 8; // 8 AM
@@ -124,33 +131,17 @@ export async function obtenerHorasDisponibles(fecha, duracionEvento) {
       const busyTimes = response.data.calendars[idCalendario].busy;
       console.log("Agenda ocupada:", busyTimes)
 
-      //const response = await calendar.events.list({
-      //  calendarId: idCalendario,
-      //  timeMin,
-      //  //timeMax,
-      //  singleEvents: true,
-      //  orderBy: 'startTime'
-      //})
-      
-      //const busyTimes = response.data.items;
-
       // Filtrar los horarios disponibles considerando la duración del evento
       const horasDisponibles = [];
       let horaActual = horarioInicio;
       //console.log("Hora actual", horaActual)
       //console.log("Horario fin", horarioFin)
-      while (horaActual <= horarioFin ) {
-        //console.log("Entrando al while 3...", horaActual)
+      while (horaActual <= horarioFin ) {    
           let disponible = true;
           busyTimes.forEach(busy => {
-              //console.log("Hora actual", horaActual)
-              //console.log("Hora final", horaActual + duracion)
-              //const busyStart = new Date(busy.start.dateTime).getHours() - 5;
-              //const busyEnd = new Date(busy.end.dateTime).getHours() - 5;
+              // Se restan 5 horas al resultado porque viene en UTC
               const busyStart = new Date(busy.start).getHours() - 5;
-              const busyEnd = new Date(busy.end).getHours() - 5;
-              //console.log("inicioOcupado:", busyStart)
-              //console.log("finOcupado:", busyEnd)
+              const busyEnd = new Date(busy.end).getHours() - 5;  
 
               // Comparación más precisa considerando la duración del evento
             if (horaActual >= busyStart && horaActual < busyEnd ||
@@ -174,8 +165,7 @@ export async function obtenerHorasDisponibles(fecha, duracionEvento) {
   }
 }
 
-// Funcion para autenticarse en google calendar
-export async function autenticar() {
+export async function autenticar(idUsuario) {
   try {
     const oAuth2Client = new OAuth2Client(
       process.env.GOOGLE_CAL_CLIENT_ID,
@@ -183,8 +173,9 @@ export async function autenticar() {
       process.env.GOOGLE_CAL_REDIRECT_URI
     );
     
-    
-    const token = fs.readFileSync(TOKEN_PATH);
+    const usuario = idUsuario
+    const token = await obtenerTokenBd(usuario)
+    console.log("token obtenido es:", token)
     oAuth2Client.setCredentials(JSON.parse(token));
     //console.log("Autenticando", JSON.parse(token))
     
@@ -192,6 +183,32 @@ export async function autenticar() {
   } catch (error) {
     console.log("Hubo un error", error)
   }
+}
+
+export async function obtenerTokenBd(idUsuario) {
+  return new Promise((resolve, reject) => {
+    const userId = idUsuario;
+
+    // Conectar a la base de datos
+    const dbPath = path.join(__dirname, '../', 'users.db');
+    const db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        reject(new Error('Error al conectar a la base de datos'));
+      } else {
+        console.log('Conectado a la db');
+        db.get('SELECT access_token FROM users WHERE google_id = ?', [userId], (err, row) => {
+          db.close(); // Cerrar la conexión después de cada consulta
+          if (err) {
+            reject(new Error('Error al obtener el token'));
+          } else if (!row) {
+            reject(new Error('Usuario no encontrado'));
+          } else {
+            resolve(row.access_token); // Resolver con solo el token
+          }
+        });
+      }
+    });
+  });
 }
 
 // Funcion para crear eventos. Se usa para pruebas, y se espera implementar con la IA para crearlos por solicitud del usuario.
@@ -224,14 +241,16 @@ export async function crearEvento() {
 }
 
 // Funcion para consultar la agenda y obtener la disponibilidad. Se usa para pruebas
-export async function consultarAgenda() {
-  const auth = await autenticar();
+// Pendiente complementar el idUsuario en la ruta /agenda
+export async function consultarAgenda(idUsuario) {
+  const auth = await autenticar(idUsuario);
   const disponibilidad = await consultarDisponibilidad(auth);
   console.log('Agenda ocupada:', disponibilidad);
   return disponibilidad
 }
 
 // Funcion para consultar la agenda y obtener la disponibilidad. Se usa para pruebas
+// Pendiente agregar el idCalendario del usuario logueado
 export async function consultarDisponibilidad(auth) {
   const calendar = google.calendar({ version: 'v3', auth });
   const idCalendario = process.env.ID_CALENDARIO;
