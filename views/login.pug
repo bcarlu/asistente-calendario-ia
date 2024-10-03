@@ -1,0 +1,32 @@
+extends layout
+
+block styles
+  style.
+    .login-container {
+      text-align: center;
+    }
+    .google-btn {
+      display: inline-block;
+      background-color: #4285F4;
+      color: white;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    .google-btn:hover {
+      background-color: #357ae8;
+    }
+
+block content
+  .login-container
+    h1 Bienvenido
+    //-p Inicia sesión o regístrate con Google
+
+    //- Validación de usuario logueado
+    if user
+      p Ya estas logueado
+      a.google-btn(href="/chat") Ir al Chat
+    else
+      p Inicia sesión o regístrate con Google
+      a.google-btn(href="/auth/google") Continuar con Google
