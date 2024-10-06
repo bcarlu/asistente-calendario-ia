@@ -1,3 +1,4 @@
+# Para dev
 services:
   app:
     build: .
@@ -9,3 +10,11 @@ services:
     volumes:
       - .:/myapp
     command: sh -c "npm install && npm run dev"
+
+# Para prod
+# services:
+#   app:
+#     build: .
+#     ports:
+#       - "80:3000"
+#     command: npm start

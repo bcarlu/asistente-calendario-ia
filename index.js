@@ -2,8 +2,10 @@ import express from 'express';
 import { config } from 'dotenv';
 import aiRoutes from './routes/aiRoutes.js';
 import authRoutes from './routes/authRoutes.js';
-// Para pruebas de conexion remota hacia localhost
-import ngrok from '@ngrok/ngrok'
+/** nrok para dev en pruebas de conexion remota hacia localhost. 
+** Se debe dejar comentado cuando se vaya a crear la imagen docker para prod.
+**/
+// import ngrok from '@ngrok/ngrok'
 // Para manejo de sesiones
 import session from 'express-session';
 
