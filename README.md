@@ -1,7 +1,7 @@
 
-# Proyecto API de Asistente de IA para consultar agenda disponible
+# Asistente de calendario con IA
 
-Este proyecto es una API que permite interactuar con un asistente de IA que consulta la disponibilidad en la agenda de Google Calendar. La API permite hacer preguntas al asistente de IA para obtener las horas disponibles en una fecha especifica y para un servicio determinado (segun la duracion del servicio). Para ello debes tener una cuenta de pago en OpenaAI y debes crear el asistente el cual debe tener configurada la herramienta de funciones en la cual debe estar configurada la funcion "consultarAgenda" con la siguiente estructura:
+Esta app permite interactuar con un asistente de IA por medio de chat, para consultar la disponibilidad en el calendario de Google Calendar del usuario logueado. Actualmente se pueden hacer preguntas al asistente de IA para obtener las horas disponibles en una fecha especifica segun la duracion del evento que deseas agendar. Para configurar la app se debe tener una cuenta de pago en OpenaAI y una app en Google Cloud con acceso a la API de Calendar. En OpenAI se debe crear el asistente y se debe habilitar la herramienta de funciones en la cual debe estar configurada la funcion "consultarAgenda" con la siguiente estructura:
 
 ```json
 {
@@ -17,7 +17,7 @@ Este proyecto es una API que permite interactuar con un asistente de IA que cons
       },
       "duracion": {
         "type": "number",
-        "description": "cantidad de horas que dura el servicio que se desea reservar."
+        "description": "cantidad de horas que dura el evento que se desea reservar."
       }
     },
     "required": [
@@ -30,13 +30,22 @@ Este proyecto es una API que permite interactuar con un asistente de IA que cons
 ```
 Y adicionalmente agregar las instrucciones en el asistente, que pueden ser:
 
-Eres una asesora de atencion al cliente (mujer) en un salon de belleza encargada de atender las consultas de las clientas y en especial de confirmar la disponibilidad en la agenda (a traves de google calendar) para un servicio en especifico, con el fin de que el cliente pueda saber en cual hora tiene espacio para reservar una cita. Para ello debes:
+Eres una asistente personal calida, energica y amigable, encargada de revisar la disponibilidad en el calendario de tu cliente (a traves de google calendar), tambien te encargas de informar los eventos que tu cliente tiene agendados en una fecha especifica, de crear y de eliminar eventos. Para revisar la disponibilidad el cliente te debe confirmar una fecha y la duracion del evento que desea programar, ya que segun la duracion del mismo es que se validara la disponibilidad. Ten en cuenta las siguientes directrices:
 
-- Solicitar al usuario la fecha en la que desea validar la disponibilidad y el nombre del servicio, debes solicitar estos 2 datos en la misma respuesta. Indicar al cliente que la fecha la debe suministrar completa con dia mes y año, ejemplo: 9 oct 87 que se refiere al 9 de octubre de 1987.
-- Enviar el listado de servicios para que el cliente sepa cual servicio pedir
-- Tener presente que el usuario normalmente solo suministra el dia del cual quiere conocer la disponibilidad, por ejemplo "hoy" o "mañana" o 10 de sep, por lo cual debes tener en cuenta el año actual que es 2024 y tener en cuenta que la zona horaria es America/Bogota. Adicionalmente para asegurar que la fecha solicitada sea la correcta
-- Cuando el cliente pregunte por la disponibilidad debes llamar a la funcion "consultarAgenda" enviando como parametros la fecha (en formato "año-mes-dia") y la duracion del servicio solicitado, la duracion de los servicio se sumistra mas adelante en estas instrucciones.
+- Recuerda siempre saludar y preguntar al cliente que necesita en caso de que previamente no lo haya mencionado.
+- El año actual es 2024 por lo cual no es necesario preguntar al cliente el año.
+- Solo en caso de que el cliente manifieste la intencion de consultar la disponibilidad en la agenda, solicitar al usuario la fecha en la que desea validar la disponibilidad y la duracion del evento, debes solicitar estos 2 datos en la misma respuesta. Tener en cuenta que si en la pregunta anterior el cliente ya lo menciono no es necesario pedirlo de nuevo.
+- Tener presente que el usuario normalmente solo suministra el dia del cual quiere conocer la disponibilidad, por ejemplo "hoy" o "mañana" o 10 de sep, por lo cual debes tener en cuenta el año actual y tener en cuenta que la zona horaria es America/Bogota.
+- Cuando el cliente pregunte por la disponibilidad debes llamar a la funcion "consultarAgenda" enviando como parametros la fecha (en formato "año-mes-dia") y la duracion del evento deseado.
 - Cuando obtengas la respuesta de la funcion "consultarAgenda" debes crear una respuesta en lenguaje natural para el usuario. Las horas que incluyas en la respuesta deben ser en formato AM y PM, ejemplo las 17:00 son las 5:00PM.
+- Formatea la respuesta mostrando las horas en una lista con salto de linea para cada una, por ejemplo:
+    
+    Para el 9 de octubre tienes las siguientes horas disponibles:
+    
+    - 8:00AM
+    - 9:00AM
+
+Restricciones: Recuerda limitarte a responder unicamente preguntas sobre la disponibilidad, el crear o eliminar eventos del calendario.
 
 ## Requisitos
 
@@ -48,8 +57,8 @@ Eres una asesora de atencion al cliente (mujer) en un salon de belleza encargada
 1. **Clona este repositorio**:
 
    ```bash
-   git clone https://github.com/bcarlu/consulta-agenda-ia-v1
-   cd consulta-agenda-ia-v1
+   git clone https://github.com/bcarlu/consulta-agenda-ia-v2
+   cd consulta-agenda-ia-v2
    ```
 
 2. **Instala las dependencias**:
@@ -68,7 +77,7 @@ Eres una asesora de atencion al cliente (mujer) en un salon de belleza encargada
 
   GOOGLE_CAL_CLIENT_ID=tu_id_google_calendar
   GOOGLE_CAL_CLIENT_SECRET=tu_client_secret_google_calendar
-  GOOGLE_CAL_REDIRECT_URI=http://localhost:3000/auth
+  GOOGLE_CAL_REDIRECT_URI=tu_uri_de_redireccion_google_calendar
   ID_CALENDARIO=id_calendario
    ```
 
@@ -85,12 +94,16 @@ Eres una asesora de atencion al cliente (mujer) en un salon de belleza encargada
 
 El servidor estará disponible en `http://localhost:3000`.
 
+## Vistas
+- Login/Registro: Para iniciar sesion con Google.
+- Chat: Pagina principal del asistente.
+
 ## Endpoints
 
 ### 1. Autenticacion en Google Calendar
-- **GET `/conectar-calendario`**: Se debe acceder desde el navegador web (no desde el cliente api como postman o rapidapi) para ser redirigido a la pagina de autenticacion de Google
+- **GET `/auth/google`**: Para autenticarse en Google y luego es redirigido a la pagina de autenticacion de Google
 
-- **GET `/auth`**: Se utiliza para recibir y guardar el token de Google Calendar en un archivo local (token.json)
+- **GET `/auth/google/callback`**: Se utiliza para recibir y guardar el token de Google Calendar en sqlite
 
 ### 2. Asistente de IA
 
