@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import { google } from 'googleapis';
 import sqlite3 from 'sqlite3';
+
 // Para manipular rutas de los directorios
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+// Para manipular el Thread del asistente de openai
+import { eliminarThreadDeUsuario } from "../controllers/aiController.js"
 
 // Definir filename y dirname para utilizar con path
 const __filename = fileURLToPath(import.meta.url);
@@ -68,6 +72,9 @@ router.get('/login', (req, res) => {
 
 // Ruta para cerrar sesión
 router.get('/logout', (req, res) => {
+  //Eliminar Thread del asistente de openai en caso de haber alguno
+  eliminarThreadDeUsuario(req.session.user.google_id)
+  
   req.session.destroy((err) => {
     if (err) {
       return next(err);

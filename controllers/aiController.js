@@ -21,22 +21,49 @@ const idAsistente = process.env.ID_ASSISTANT;
 // Archivo para guardar el token de Google Calendar
 const TOKEN_PATH = 'token.json';
 
+// Almacén para los hilos de cada usuario (en memoria, solo para pruebas)
+const userThreads = {}; 
+
+// Función para eliminar el hilo del usuario cuando cierre sesión
+export const eliminarThreadDeUsuario = (idUsuario) => {
+  console.log("Hilos actuales:", userThreads);
+  if (userThreads[idUsuario]) {
+    delete userThreads[idUsuario];
+    console.log(`Hilo del usuario con id ${idUsuario} eliminado.`);
+    console.log("Quedan estos hilos:", userThreads);
+  } else {
+    console.log(`No se encontró un hilo para el usuario con id ${idUsuario}.`);
+  }
+};
+
 // Funcion principal para generar respuestas IA basado en la pregunta de un usuario
 export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario) => {
   console.log("Mensaje del usuario:", mensajeUsuario);
+  console.log("Hilos actuales:", userThreads);
 
   try {
+    // Verificar si el usuario ya tiene un hilo existente
+    let threadId = userThreads[idUsuario];
+
+    // Si no hay un hilo para este usuario, crear uno nuevo
+    if (!threadId) {
+      const thread = await openai.beta.threads.create();
+      threadId = thread.id;
+      // Almacenar el thread.id para este usuario
+      userThreads[idUsuario] = threadId;
+    }
+
     // Crear un nuevo hilo (thread)
-    const thread = await openai.beta.threads.create();
+    //const thread = await openai.beta.threads.create();
 
     // Enviar el mensaje del usuario al asistente
-    const message = await openai.beta.threads.messages.create(thread.id, {
+    const message = await openai.beta.threads.messages.create(threadId, {
       role: "user",
       content: mensajeUsuario,
     });
 
     // Iniciar una ejecución (run)
-    let run = await openai.beta.threads.runs.createAndPoll(thread.id, {
+    let run = await openai.beta.threads.runs.createAndPoll(threadId, {
       assistant_id: idAsistente,
     });
 
@@ -68,7 +95,7 @@ export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario
         );
 
         if (toolOutputs.length > 0) {
-          run = await openai.beta.threads.runs.submitToolOutputsAndPoll(thread.id, run.id, { tool_outputs: toolOutputs });
+          run = await openai.beta.threads.runs.submitToolOutputsAndPoll(threadId, run.id, { tool_outputs: toolOutputs });
           console.log("Tool outputs submitted successfully.");
         } else {
           console.log("No tool outputs to submit.");
@@ -80,7 +107,7 @@ export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario
 
     const handleRunStatus = async (run) => {
       if (run.status === "completed") {
-        const messages = await openai.beta.threads.messages.list(thread.id);
+        const messages = await openai.beta.threads.messages.list(threadId);
         console.log(messages.data);
         return { respuesta: messages.data };
       } else if (run.status === "requires_action") {
