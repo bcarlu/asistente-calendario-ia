@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { generarRespuestaIA } from '../controllers/aiController.js';
-import { obtenerHorasDisponibles, crearEvento, consultarAgenda } from '../controllers/aiController.js';
+import { obtenerHorasDisponibles, crearEvento, obtenerEventos, obtenerFechaActual } from '../controllers/aiController.js';
 
 const router = Router();
 
@@ -36,18 +36,40 @@ router.post('/consultar-agenda', async (req, res) => {
 });
 
 // Consulta agenda ocupada hoy
-router.get('/agenda', async (req,res) => {
-  const disponibilidad = await consultarAgenda();
+router.get('/obtener-eventos', async (req,res) => {
+  const idUsuario = req.session.user.google_id 
+  const idCalendario = req.session.user.email 
+  const fecha = "2024-10-09"
+  console.log("usuario para validar agenda:", idUsuario)
+  const disponibilidad = await obtenerEventos(idUsuario, idCalendario, fecha );
   console.log('Agenda ocupada:', disponibilidad);
   res.json(disponibilidad)
 })
 
-// Para crear eventos en google calendar
-router.get('/crear-evento', async (req,res) => {
-  const evento = await crearEvento();
-  console.log('Evento:', evento);
-  res.json(evento)
+router.get('/get-fecha', async (req,res) => {
+  const resultado = await obtenerFechaActual()
+  res.send(resultado)
 })
+
+// Para crear eventos en google calendar
+router.get('/crear-evento', async (req, res) => {
+  const fecha = "2024-10-23"; // Fecha en formato string
+  const hora = "10:00"; // Hora en formato HH:mm
+  const nombre = "Evento prueba rst ia";
+  const duracion = 2; // Duración en horas
+  const idUsuario = req.session.user.google_id;
+  console.log('id usuario para crear evento:', idUsuario)
+  const calendario = req.session.user.email;
+
+  try {
+    const evento = await crearEvento(fecha, hora, nombre, duracion, idUsuario, calendario);
+    console.log('Evento:', evento);
+    res.json(evento);
+  } catch (error) {
+    console.error('Error en la creación del evento:', error);
+    res.status(500).json({ error: 'No se pudo crear el evento' });
+  }
+});
 
 // Para validar la agenda disponible en una fecha especifica
 router.get('/disponibilidad', async (req, res) => {
