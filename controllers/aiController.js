@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import sqlite3 from 'sqlite3';
+
 // Para manipular rutas de los directorios
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -76,16 +77,42 @@ export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario
       ) {
         const toolOutputs = await Promise.all(
           run.required_action.submit_tool_outputs.tool_calls.map(async (tool) => {
-            if (tool.function.name === "consultarAgenda") {
+            // Obtener fecha actual
+            if (tool.function.name === "obtenerFechaActual") {
+              const resultado = await obtenerFechaActual();                
+              console.log("Fecha actual:", resultado);
+              return {
+                tool_call_id: tool.id,
+                output: resultado,
+              };              
+            }
+
+            // Obtener eventos del calendario
+            if (tool.function.name === "obtenerEventos") {
               const args = JSON.parse(tool.function.arguments); // Asegúrate de que los argumentos estén en formato JSON
-              const fecha = args.fecha;              
+              const fecha = args.fecha;
+              console.log("La fecha para obtener eventos es:", fecha)
+              const resultado = await obtenerEventos(idUsuario, idCalendario, fecha);                
+              console.log("Resultado de obtenerEventos:", resultado);
+              return {
+                tool_call_id: tool.id,
+                output: JSON.stringify(resultado),
+              };              
+            }
+
+            // Crear evento en el calendario
+            if (tool.function.name === "crearEvento") {
+              const args = JSON.parse(tool.function.arguments); // Asegúrate de que los argumentos estén en formato JSON
+              const fecha = args.fecha;
+              const hora = args.hora;
+              const nombre = args.nombre;
               const duracion = args.duracion;
-
               console.log("La fecha del cliente es:", fecha)
-
-              //const resultado = await consultarAgenda();
-              const resultado = await obtenerHorasDisponibles(fecha, duracion, idUsuario, idCalendario);                
-              console.log("Resultado consulta dentro de run:", resultado);
+              console.log("La hora del cliente es:", hora)
+              console.log("El nombre del evento es:", nombre)
+              console.log("La duracion es:", duracion)
+              const resultado = await crearEvento(fecha, hora, nombre, duracion, idUsuario, idCalendario);                
+              console.log("Resultado de crearEvento:", resultado);
               return {
                 tool_call_id: tool.id,
                 output: JSON.stringify(resultado),
@@ -111,7 +138,8 @@ export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario
         console.log(messages.data);
         return { respuesta: messages.data };
       } else if (run.status === "requires_action") {
-        console.log("Ejecutando acciones requeridas:", run.status);
+        const accionRequerida = run.required_action.submit_tool_outputs.tool_calls.map(async (tool) => {return tool.function})
+        console.log("Ejecutando acciones requeridas:", accionRequerida);
         return await handleRequiresAction(run);
       } else {
         console.error("Run no se completo:", run);
@@ -120,6 +148,7 @@ export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario
 
     return await handleRunStatus(run);
   } catch (error) {
+    //TODO: Agregar metodo para cancelar el run actual https://platform.openai.com/docs/api-reference/runs/cancelRun
     console.error("Error:", error);
     throw new Error("Ocurrió un error al procesar la consulta");
   }
@@ -202,7 +231,7 @@ export async function autenticar(idUsuario) {
     
     const usuario = idUsuario
     const token = await obtenerTokenBd(usuario)
-    console.log("token obtenido es:", token)
+    //console.log("token obtenido es:", token)
     oAuth2Client.setCredentials(JSON.parse(token));
     //console.log("Autenticando", JSON.parse(token))
     
@@ -238,19 +267,27 @@ export async function obtenerTokenBd(idUsuario) {
   });
 }
 
-// Funcion para crear eventos. Se usa para pruebas, y se espera implementar con la IA para crearlos por solicitud del usuario.
-export async function crearEvento() {
-  const auth = await autenticar();
-  const idCalendario = process.env.ID_CALENDARIO;
+// Funcion para crear eventos
+export async function crearEvento(fecha, hora, nombre, duracion, idUsuario, calendario) {
+  const auth = await autenticar(idUsuario);
+  const idCalendario = calendario || process.env.ID_CALENDARIO;
   const calendar = google.calendar({ version: 'v3', auth });
+  
+  const fechaInicio = new Date(fecha.concat(" ", hora))
+  const fechaFin = new Date(fechaInicio); // Copiar la fecha de inicio
+  fechaFin.setHours(fechaInicio.getHours() + duracion); // Sumar la duración
+  console.log("Fecha de inicio:", fechaInicio);
+  console.log("Fecha de fin:", fechaFin);
+
+  // Crear el evento
   const event = {
-    summary: 'Evento de prueba',
+    summary: nombre,
     start: {
-      dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      dateTime: fechaInicio.toISOString(), // Formato ISO para Google Calendar
       timeZone: 'America/Bogota' // Ajusta la zona horaria según tu ubicación
     },
     end: {
-      dateTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(),
+      dateTime: fechaFin.toISOString(), // Formato ISO para Google Calendar
       timeZone: 'America/Bogota'
     }
   };
@@ -261,49 +298,64 @@ export async function crearEvento() {
       requestBody: event
     });
     console.log('Evento creado:', response.data);
+    return response.data;
 
   } catch (error) {
     console.error('Error al crear el evento:', error);
+    throw new Error('No se pudo crear el evento');
   }
 }
 
-// Funcion para consultar la agenda y obtener la disponibilidad. Se usa para pruebas
-// Pendiente complementar el idUsuario en la ruta /agenda
-export async function consultarAgenda(idUsuario) {
+// Funcion para obtener los eventos programados en el calendario
+export async function obtenerEventos(idUsuario, idCalendario, fecha) {
   const auth = await autenticar(idUsuario);
-  const disponibilidad = await consultarDisponibilidad(auth);
-  console.log('Agenda ocupada:', disponibilidad);
+  const disponibilidad = await getEventos(auth, idCalendario, fecha);
+  console.log('Eventos programados:', disponibilidad);
   return disponibilidad
+}
+
+export async function obtenerFechaActual(){
+  //Fecha y hora para Colombia. Pendiente configurar dinamicamente para el pais desde el cual se consulta
+  const fecha = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })
+  return fecha
 }
 
 // Funcion para consultar la agenda y obtener la disponibilidad. Se usa para pruebas
 // Pendiente agregar el idCalendario del usuario logueado
-export async function consultarDisponibilidad(auth) {
+export async function getEventos(auth, calendario, fecha) {
   const calendar = google.calendar({ version: 'v3', auth });
-  const idCalendario = process.env.ID_CALENDARIO;
-
-  // Fecha de inicio y fin
-  const startDate = new Date();
-  const endDate = new Date();
-  endDate.setDate(startDate.getDate() + 3); // Suma 3 días a la fecha de inicio
-  console.log("Inicio:",startDate.toISOString())
-  console.log("Fin:",endDate.toISOString())
+  const idCalendario = calendario;
+  const horaInicio = "00:00"
+  const fechaInicio = new Date(fecha.concat(" ", horaInicio))
+  const fechaFin = new Date(fechaInicio); // Copiar la fecha de inicio
+  fechaFin.setHours("23","59"); // Sumar la duración
+  console.log("Fecha inicio obtener eventos:", fechaInicio);
+  console.log("Fecha de fin obtener eventos:", fechaFin);
 
   try {
-    const response = await calendar.freebusy.query({
-      requestBody: {
-        timeMin: startDate.toISOString(),
-        timeMax: endDate.toISOString(),
-        timeZone: 'America/Bogota',
-        items: [{ id: idCalendario }]
-      }
+    const response = await calendar.events.list({
+      calendarId: idCalendario,
+      timeMin: fechaInicio.toISOString(),
+      timeMax: fechaFin.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
     });
 
-    // Procesar la respuesta
-    const busyTimes = response.data.calendars[idCalendario].busy;
-    return busyTimes;
+    const events = response.data.items;
+    
+    if (events.length) {
+      return events.map(event => ({
+        nombre: event.summary,
+        inicio: event.start.dateTime || event.start.date,
+        fin: event.end.dateTime || event.end.date
+      }));
+    } else {
+      console.log('No se encontraron eventos para la fecha especificada.');
+      return [];
+    }
 
   } catch (error) {
-    console.error('Error al consultar la disponibilidad:', error);
+    console.error('Error al consultar los eventos:', error);
+    throw error;
   }
 }
