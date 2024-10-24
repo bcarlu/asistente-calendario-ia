@@ -1,5 +1,10 @@
 FROM node:18-slim
 
+# Establecer variables de entorno para el timezone
+ENV TZ=America/Bogota
+# Configurar la zona horaria
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Establecer el directorio de trabajo en el contenedor
 WORKDIR /myapp
 
@@ -8,7 +13,8 @@ COPY package.json package-lock.json* ./
 
 # Para dev
 RUN npm install 
-# para prod RUN npm install --only=production
+# para prod comenta la linea anterior y descomenta la inferior
+#RUN npm install --only=production
 
 # Copiar el resto del código de la aplicación
 COPY . .
