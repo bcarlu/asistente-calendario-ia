@@ -87,6 +87,18 @@ html(lang="es")
       button:hover {
         background-color: #8a75ff;
       }
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #e6e0ff;
+        border-radius: 50%;
+        border-top-color: #9f8fff;
+        animation: spin 1s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
   body
     .chat-container
       h1 Agenda IA
@@ -110,6 +122,12 @@ html(lang="es")
           addMessage('user', mensajeUsuario);
           messageInput.value = '';
 
+          // Agregar mensaje de carga
+          const loadingMessage = addMessage('bot', '');
+          const loadingIcon = document.createElement('div');
+          loadingIcon.className = 'loading';
+          loadingMessage.appendChild(loadingIcon);
+
           fetch('/consultar-agenda', {
             method: 'POST',
             headers: {
@@ -119,6 +137,9 @@ html(lang="es")
           })
           .then(response => response.json())
           .then(data => {
+            // Eliminar el mensaje de carga
+            loadingMessage.remove();
+
             if (data && data.respuesta && data.respuesta[0] && data.respuesta[0].content[0].text.value) {
               const respuestaBot = data.respuesta[0].content[0].text.value;
               addMessage('bot', respuestaBot);
@@ -127,6 +148,9 @@ html(lang="es")
             }
           })
           .catch(error => {
+            // Eliminar el mensaje de carga
+            loadingMessage.remove();
+
             console.error('Error:', error);
             addMessage('bot', 'Error: No se pudo obtener la respuesta del servidor.');
           });
@@ -139,4 +163,5 @@ html(lang="es")
         messageElement.textContent = text;
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        return messageElement;
       }
