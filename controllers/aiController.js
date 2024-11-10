@@ -118,6 +118,19 @@ export const generarRespuestaIA = async (mensajeUsuario, idUsuario, idCalendario
                 output: JSON.stringify(resultado),
               };              
             }
+
+            // Eliminar evento del calendario
+            if (tool.function.name === "eliminarEvento") {
+              const args = JSON.parse(tool.function.arguments); // Asegúrate de que los argumentos estén en formato JSON
+              const idEvento = args.idEvento;
+              console.log("id evento a eliminar es:", idEvento)
+              const resultado = await eliminarEvento(idUsuario, idEvento, idCalendario);                
+              console.log("Evento eliminado:", resultado);
+              return {
+                tool_call_id: tool.id,
+                output: JSON.stringify(resultado),
+              };              
+            }
           })
         );
 
@@ -344,10 +357,12 @@ export async function getEventos(auth, calendario, fecha) {
     const events = response.data.items;
     
     if (events.length) {
-      return events.map(event => ({
+      return events.map(event => (
+        {
         nombre: event.summary,
         inicio: event.start.dateTime || event.start.date,
-        fin: event.end.dateTime || event.end.date
+        fin: event.end.dateTime || event.end.date,
+        id: event.id
       }));
     } else {
       console.log('No se encontraron eventos para la fecha especificada.');
@@ -357,5 +372,26 @@ export async function getEventos(auth, calendario, fecha) {
   } catch (error) {
     console.error('Error al consultar los eventos:', error);
     throw error;
+  }
+}
+
+// Función para eliminar eventos
+export async function eliminarEvento(idUsuario, idEvento, calendario) {
+  const auth = await autenticar(idUsuario);
+  const idCalendario = calendario || process.env.ID_CALENDARIO;
+  const calendar = google.calendar({ version: 'v3', auth });
+
+  try {
+    const response = await calendar.events.delete({
+      calendarId: idCalendario,
+      eventId: idEvento
+    });
+
+    console.log('Evento eliminado:', idEvento);
+    return { success: true, message: 'Evento eliminado con éxito' };
+
+  } catch (error) {
+    console.error('Error al eliminar el evento:', error);
+    throw new Error('No se pudo eliminar el evento');
   }
 }
