@@ -3,7 +3,7 @@
 
 Con esta App puedes consultar por medio de un chat con IA los eventos programados en tu calendario personal de google calendar y crear nuevos eventos. Posteriormente se espera agregar la fucion para eliminar eventos. Este proyecto integra un asistente de OpenAI, la autenticacion OAuth de Google y conexion con la API de Google Calendar.
 
-[Video demostrativo](https://youtu.be/8hlv1luDEvw)
+[Video demostrativo](https://youtu.be/S8UcF_9fIk0)
 
 ## Requisitos
 
