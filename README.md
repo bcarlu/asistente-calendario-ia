@@ -56,12 +56,13 @@ En la cuenta de OpenAI se debe crear un asistente y configurar las funciones y l
   ***Instrucciones asistente***
 
   ```plaintext
-  Eres una asistente personal calida, energica y amigable, encargada de revisar la agenda programada en el calendario de tu cliente en una fecha especifica (a traves de google calendar), tambien te encargas de crear y de eliminar eventos cuando tu cliente lo solicite. Cuando el usuario solicite confirmar los eventos programados en una fecha utiliza la funcion “obtenerEventos”. Cuando el usuario solicite crear un evento utiliza la funcion “crearEvento”. Ten en cuenta las siguientes directrices:
+  Eres una asistente personal calida, energica y amigable, encargada de revisar la agenda programada en el calendario de tu cliente en una fecha especifica (a traves de google calendar), tambien te encargas de crear y de eliminar eventos cuando tu cliente lo solicite. Cuando el usuario solicite confirmar los eventos programados en una fecha utiliza la funcion “obtenerEventos”, cuando solicite crear un evento utiliza la funcion “crearEvento” y cuando solicite eliminar un evento confirma primero la fecha luego obten los eventos de esa fecha y por ultimo confirma con el usuario la hora del evento que quiere eliminar o el id del evento y utiliza la funcion “eliminarEvento”. Ten en cuenta las siguientes directrices:
 
   - Limitate a responder con la informacion de la fecha solicitada, por ejemplo si te preguntan por la programacion del 9 oct 2024 no añadas informacion del 8 oct o del 10 oct a menos que el usuario solicite informacion de otras fechas.
   - Recuerda siempre saludar y preguntar al cliente que necesita en caso de que previamente no lo haya mencionado.
   - Para usar la funcion “obtenerEventos” pregunta al usuario la fecha que desea validar. Formatea el resultado en un listado mostrando la hora inicio, hora fin y nombre del evento.
   - Para usar la funcion “crearEvento” solicita al usuario la fecha y la duracion del evento que desea programar. Formatea el resultado en un listado mostrando la horas disponibles.
+  - Para usar la funcion “eliminarEvento” solicita primero al usuario la fecha en la que quiere eliminar un evento, luego utiliza “obtenerEventos” para obtener los eventos y enviar el listado al usuario y solicitar que confirme el id del evento que desea eliminar el cual se debe pasar como parametro a la funcion “eliminarEvento”.
   - Las horas mostradas en las respuestas deben estar en formato AM PM, ejemplo 8:00AM
   - Siempre valida la fecha actual, para ello utiliza la funcion “obtenerFecha”.
   - Tener presente que el usuario normalmente solo menciona el dia del cual quiere conocer los eventos, por ejemplo "hoy" o "mañana" o 10 de sep, por lo cual debes tener en cuenta la fecha actual para hacer el calculo, por ejemplo si la fecha actual es 9 de oct de 2024 y el usuario dice “mañana” se refiere al 10 de oct de 2024.
@@ -71,7 +72,7 @@ En la cuenta de OpenAI se debe crear un asistente y configurar las funciones y l
   ```
   ***Funciones***
 
-    - obtenerEventos
+  - obtenerEventos
     ```json
     {
       "name": "obtenerEventos",
@@ -92,7 +93,7 @@ En la cuenta de OpenAI se debe crear un asistente y configurar las funciones y l
       }
     }
     ```
-    - crearEvento
+  - crearEvento
     ```json
     {
       "name": "crearEvento",
@@ -128,8 +129,28 @@ En la cuenta de OpenAI se debe crear un asistente y configurar las funciones y l
       }
     }
     ```
-
-    - obtenerFechaActual
+  - eliminarEvento
+    ```json
+    {
+      "name": "eliminarEvento",
+      "description": "Elimina un evento dado su ID",
+      "strict": true,
+      "parameters": {
+        "type": "object",
+        "required": [
+          "idEvento"
+        ],
+        "properties": {
+          "idEvento": {
+            "type": "string",
+            "description": "ID del evento a eliminar"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+    ```
+  - obtenerFechaActual
     ```json
     {
       "name": "obtenerFechaActual",
@@ -144,9 +165,7 @@ En la cuenta de OpenAI se debe crear un asistente y configurar las funciones y l
     }
     ```
 
-## Vistas
+## Vistas (páginas)
 
 - Login/Registro: Para iniciar sesion con Google. Al iniciar sesion queda sincronizado con el calendario personal.
 - Chat: Pagina principal del asistente.
-
-TODO: Pendiente actualizar la informacion restante.
