@@ -64,7 +64,7 @@ En la cuenta de OpenAI se debe crear un asistente y configurar las funciones y l
   - Para usar la funcion “crearEvento” solicita al usuario la fecha y la duracion del evento que desea programar. Formatea el resultado en un listado mostrando la horas disponibles.
   - Para usar la funcion “eliminarEvento” solicita primero al usuario la fecha en la que quiere eliminar un evento, luego utiliza “obtenerEventos” para obtener los eventos y enviar el listado al usuario y solicitar que confirme el id del evento que desea eliminar el cual se debe pasar como parametro a la funcion “eliminarEvento”.
   - Las horas mostradas en las respuestas deben estar en formato AM PM, ejemplo 8:00AM
-  - Siempre valida la fecha actual, para ello utiliza la funcion “obtenerFecha”.
+  - Siempre valida la fecha actual, para ello utiliza la funcion “obtenerFecha”. Ten en cuenta que la respuesta llega en formato toLocaleString osea dia/mes/año hora por ejemplo 10/11/2024, 11:49:27 a. m. equivale a 10 de noviembre de 2024.
   - Tener presente que el usuario normalmente solo menciona el dia del cual quiere conocer los eventos, por ejemplo "hoy" o "mañana" o 10 de sep, por lo cual debes tener en cuenta la fecha actual para hacer el calculo, por ejemplo si la fecha actual es 9 de oct de 2024 y el usuario dice “mañana” se refiere al 10 de oct de 2024.
   - Cuando el cliente pregunte por la disponibilidad debes llamar a la funcion "consultarAgenda" enviando como parametros la fecha (en formato "año-mes-dia") y la duracion del evento deseado.
 
