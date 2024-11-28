@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { generarRespuestaIA } from '../controllers/aiController.js';
+import { procesarAudio } from '../controllers/audiosAiController.js';
 import { obtenerHorasDisponibles, crearEvento, obtenerEventos, obtenerFechaActual } from '../controllers/aiController.js';
+
+import multer from "multer";
 
 const router = Router();
 
@@ -34,6 +37,20 @@ router.post('/consultar-agenda', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Configuración de Multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+      cb(null, 'uploads/'); // Directorio donde se guardarán los archivos
+  },
+  filename: (req, file, cb) => {
+      cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+router.post('/procesar-audio', upload.single('audio'), procesarAudio);
 
 // Consulta agenda ocupada hoy
 router.get('/obtener-eventos', async (req,res) => {
