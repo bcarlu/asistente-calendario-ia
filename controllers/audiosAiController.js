@@ -1,7 +1,14 @@
 import fs from "fs";
-import path from "path";
 import OpenAI from "openai";
 import { generarRespuestaIA } from './aiController.js';
+
+// Para manipular rutas de los directorios
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Definir filename y dirname para utilizar con path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Para Open AI
 const openai = new OpenAI({
@@ -24,10 +31,10 @@ export async function crearAudioDesdeTexto(texto) {
 }
 
 // Función para convertir el audio en texto
-export async function transcribirAudio(audio) {
+export async function transcribirAudio(idCalendario, audio) {
   try {
     const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream("uploads/" + audio),
+      file: fs.createReadStream("uploads/" + idCalendario + "/" + audio),
       model: "whisper-1",
     });
     return transcription.text
@@ -48,13 +55,13 @@ export async function procesarAudio(req, res) {
   const idCalendario = req.body.idCalendario;
 
   // Aquí se convierte el audio del mensaje del usuario en texto
-  const mensajeUsuarioTexto = await transcribirAudio(audioFile);
+  const mensajeUsuarioTexto = await transcribirAudio(idCalendario, audioFile);
   const infoParaAsistente = "NOTA: Este texto proviene de un audio"
   const textoParaAsistente = mensajeUsuarioTexto.concat(" ", infoParaAsistente)
   
   console.log("Texto del audio generado:", textoParaAsistente);
 
-  // Enviar textoGeneradoDesdeAudio al asistente
+  // Enviar mensaje del usuario en texto al asistente
   const data = await generarRespuestaIA(textoParaAsistente, idUsuario, idCalendario);
   
   if (data && data.respuesta && data.respuesta[0] && data.respuesta[0].content[0].text.value) {
@@ -72,4 +79,22 @@ export async function procesarAudio(req, res) {
     console.log('Error en la creación del audio');
     res.status(500).json({ error: 'No se pudo procesar el audio' });
   }
+}
+
+export function eliminarDirAudiosUsuario (usuario) {
+  const dirUsuario = path.join(__dirname, '../', 'uploads/', usuario);
+
+  try {
+    fs.rm(dirUsuario, { recursive: true, force: true }, function (err) {
+      if (err) {
+        console.error('Error al eliminar el directorio del usuario:', err);
+      } else{
+        console.log('Directorio del usuario %s borrado con exito!', usuario);
+      }      
+    });
+  } catch (error) {
+    console.error('CATCH: Error al eliminar el directorio:', error);
+    throw new Error("Error al eliminar el directorio del usuario");
+  }
+
 }

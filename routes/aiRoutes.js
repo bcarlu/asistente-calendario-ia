@@ -41,10 +41,11 @@ router.post('/consultar-agenda', async (req, res) => {
 // Configuración de Multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-      cb(null, 'uploads/'); // Directorio donde se guardarán los archivos
+      const usuario = req.session.user.email
+      cb(null, 'uploads/' + usuario + '/'); // Directorio donde se guardarán los archivos
   },
   filename: (req, file, cb) => {
-      cb(null, Date.now() + '-' + file.originalname);
+      cb(null, file.originalname);
   }
 });
 

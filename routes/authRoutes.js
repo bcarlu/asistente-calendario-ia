@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { google } from 'googleapis';
 import sqlite3 from 'sqlite3';
+import fs from 'fs';
+
+import {eliminarDirAudiosUsuario} from '../controllers/audiosAiController.js'
 
 // Para manipular rutas de los directorios
 import path from 'path';
@@ -74,7 +77,10 @@ router.get('/login', (req, res) => {
 router.get('/logout', (req, res) => {
   //Eliminar Thread del asistente de openai en caso de haber alguno
   eliminarThreadDeUsuario(req.session.user.google_id)
-  
+
+  // Se elimina la carpeta de audios del usuario para liberar espacio
+  eliminarDirAudiosUsuario(req.session.user.email)
+
   req.session.destroy((err) => {
     if (err) {
       return next(err);
@@ -105,7 +111,7 @@ router.get('/auth/google/callback', async (req, res) => {
   console.log("Llegamos a /auth/google/callback")
   const code = req.query.code;
   const usuario = req.session.user
-
+  
   try {
     const { tokens } = await OAuth2Client.getToken(code);
     OAuth2Client.setCredentials(tokens);
@@ -118,6 +124,11 @@ router.get('/auth/google/callback', async (req, res) => {
     const google_id = data.id;
     const display_name = data.name;
     const email = data.email;
+
+    // Crear directorio para almacenar los audios del usuario
+    fs.mkdir('uploads/' + email, { recursive: true }, (err) => {
+      if (err) throw err;
+    })
 
     // Guardar los datos en la sesión (opcional)
     req.session.user = { google_id, display_name, email };
